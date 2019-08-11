@@ -3,7 +3,7 @@
 Service-comb-java-chassis is SDK for ServiceComb. And it defines provider model, handler model,
 and transport model.
 
-When run the BMI sample code, what happens? I will try to lift the veil.
+When start ServiceComb application what happens? How ServiceComb register service into Service Center?
 
 
 ## @EnableServiceComb
@@ -22,7 +22,7 @@ public class CalculatorApplication {
 }
 ```
 What does **ServiceCombSpringConfiguration** do? 
-* It imports old style xml configured beans to **ApplicationContext**, which are defined in "classpath*:META-INF/spring/*.bean.xml".
+* It imports xml style bean definitions into **ApplicationContext** from "classpath*:META-INF/spring/*.bean.xml".
 * Make ServiceComb listen to **ApplicationReadyEvent**
 
 ```java
@@ -35,34 +35,100 @@ class ServiceCombSpringConfiguration {
   }
 }
 ```
-In the start log there is line looks like below. And __CseApplicationListener__ is declared in such bean.xml.
-And then with the JSR 330 Inject annotation, ServiceComb makes itself  relies on SpringBoot lifecycle event.
+And in the starting log there are lines look like below. There **ConfigurationSpringInitializer** in *foundation-config-1.2.0.jar!/META-INF/spring/cse.bean.xml*
+and __CseApplicationListener__ in *java-chassis-core-1.2.0.jar!/META-INF/spring/cse.bean.xml* are special at this point.
+
  
-      Loading XML bean definitions from URL [jar:file:/.../java-chassis-core-1.2.0.jar!/META-INF/spring/cse.bean.xml
+      Loading XML bean definitions from URL [jar:file:.../handler-loadbalance-1.2.0.jar!/META-INF/spring/cse.bean.xml]
+      Loading XML bean definitions from URL [jar:file:.../foundation-vertx-1.2.0.jar!/META-INF/spring/cse.bean.xml]
+      Loading XML bean definitions from URL [jar:file:.../java-chassis-core-1.2.0.jar!/META-INF/spring/cse.bean.xml]
+      Loading XML bean definitions from URL [jar:file:.../foundation-config-1.2.0.jar!/META-INF/spring/cse.bean.xml]
+      Loading XML bean definitions from URL [jar:file:...handler-bizkeeper-1.2.0.jar!/META-INF/spring/cse.bean.xml]
 
-## SCBEngine
+## ConfigurationSpringInitializer
+**ConfigurationSpringInitializer** is an EnvironmentAware bean. And when the setEnvironment method is invoked, ServiceComb ConfigUtil works there to create a local config.
 
-According to the name **SCBEngine**, it seems mean engine of ServiceComb. When spring boot application is ready, SCBEngine
-begins the init work. 
+ClassLoader will load all *microservice.yaml* files and the **MicroserviceConfigLoader** will hold all the microservice meta data.
+User can also provide comma separated system property *servicecomb.configurationSource.additionalUrls* to config the customized meta data url.
 
-SCBEngine holds below objects:
+ServiceComb uses a SPI mechanism for **ConfigCenterConfigurationSource** to init config center if a provider exists.
+However the microservice meta data is my focus here.  
 
-1. ProducerProviderManager and ConsumerProviderManager which belong to Provider model of ServiceComb 
-2. MicroserviceMeta
-3. TransportManager belongs to transport model.
-4. SchemaListenerManager
-5. Collection of BootListener implementation, which makes ServiceComb components working on event.
-6. Google EventBus.
 
-Before the application runs, what we have is: 
-1. Microservice definition meta data microservice.yml
-2. Annotation marked java as the implementation of the microservice, such as RestSchema.
+## Service Producer - how ServiceComb know your server declaration
+ServiceComb supports RPC, JAX-RS and Spring MVC style microservice declaration. And there are **PojoProducers** and **RestProducers** to parser the meta data.
+
+Both **RestProducers** and **PojoProducers** are spring BeanPostProcessor beans, and they parser **RestSchema** and **RestController** or **RpcSchema**  respectively at phrase postProcessAfterInitialization. 
+A **ProducerMeta** is generated and hold by the producer bean itself or its delegate.  
+
+
 ```java
 @RestSchema(schemaId = "calculatorRestEndpoint")
 @RequestMapping(path = "/")
-public class CalculatorRestEndpoint implements CalculatorEndpoint 
+public class CalculatorRestEndpoint implements CalculatorEndpoint{
+    ...
+} 
 ```
 
-There is the first question, how does ServiceComb parse out the 
+## SCBEngine
+
+Depends on how user starts ServiceComb, SCBEngine will be initiated on ContextRefreshedEvent (Spring application) or ApplicationReadyEvent (Spring Boot application).
+
+SCBEngine begins the initiate handler model, provider model (both producer and consumer), and transport model respectively. And then
+Start the schedule task to communicate with Service Center.
+
+**ProducerProviderManager** is used to produce SchemaMeta for each service. 
+ServiceName in *microservice.yaml* and SchemaId in **RestSchema** or **RpcSchema** passed to instance of 
+**ProducerSchemaFactory**. ProducerSchemaFactory reflects the service implementation bean and uses SwaggerGenerator to generate the service contract.
+And then all these information is hold by the SchemaMeta, which will be cached and sent to Service Center.
+
+At last, a instance of MicroserviceServiceCenterTask is scheduled at a fixed rate to do the MicroserviceRegisterTask, MicroserviceInstanceRegisterTask, MicroserviceWatchTask and MicroserviceInstanceHeartbeatTask.
+ 
+Below code snippet is an example of such a contract.  
+
+```
+swagger: "2.0"
+info:
+  version: "1.0.0"
+  title: "swagger definition for org.apache.servicecomb.samples.bmi.CalculatorRestEndpoint"
+  x-java-interface: "cse.gen.bmi.calculator.calculatorRestEndpoint.CalculatorRestEndpointIntf"
+basePath: "/"
+consumes:
+- "application/json"
+produces:
+- "application/json"
+paths:
+  /bmi:
+    get:
+      operationId: "calculate"
+      parameters:
+      - name: "height"
+        in: "query"
+        required: false
+        type: "number"
+        format: "double"
+      - name: "weight"
+        in: "query"
+        required: false
+        type: "number"
+        format: "double"
+      responses:
+        200:
+          description: "response of 200"
+          schema:
+            $ref: "#/definitions/BMIViewObject"
+definitions:
+  BMIViewObject:
+    type: "object"
+    properties:
+      result:
+        type: "number"
+        format: "double"
+      instanceId:
+        type: "string"
+      callTime:
+        type: "string"
+    x-java-class: "org.apache.servicecomb.samples.bmi.BMIViewObject
+```
 
 
