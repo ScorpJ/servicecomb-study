@@ -10,9 +10,9 @@
     <packaging>pom</packaging>
 
     <modules>
-        <!--<module>booking</module>-->
-        <!--<module>car</module>-->
-        <!--<module>hotel</module>-->
+        <module>booking</module>
+        <module>car</module>
+        <module>hotel</module>
     </modules>
 
     <properties>
