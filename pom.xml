@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.scorpj.servicecmb</groupId>
+    <groupId>com.scorpj.servicecomb</groupId>
     <artifactId>sample</artifactId>
     <version>1.0</version>
     <packaging>pom</packaging>
@@ -13,6 +13,7 @@
         <module>api-gateway</module>
         <!--<module>login</module>-->
         <module>customer-manage</module>
+        <module>saga</module>
         <!--<module>user-center</module>-->
         <!--<module>house-order</module>-->
         <!--<module>e-commerce</module>-->

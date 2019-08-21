@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.scorpj.servicecomb</groupId>
+    <artifactId>saga</artifactId>
+    <version>1.0</version>
+    <packaging>pom</packaging>
+
+    <modules>
+        <!--<module>booking</module>-->
+        <!--<module>car</module>-->
+        <!--<module>hotel</module>-->
+    </modules>
+
+    <properties>
+        <pack.version>0.4.0</pack.version>
+    </properties>
+
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.servicecomb.pack</groupId>
+            <artifactId>omega-spring-starter</artifactId>
+            <version>${pack.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.servicecomb.pack</groupId>
+            <artifactId>omega-transport-resttemplate</artifactId>
+            <version>${pack.version}</version>
+        </dependency>
+    </dependencies>
+
+
+</project>
